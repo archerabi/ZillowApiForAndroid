@@ -35,10 +35,20 @@ public class ZillowApi {
 
 	private String mApiKey;
 
+	/**
+	 * @param apiKey
+	 */
 	public ZillowApi(String apiKey) {
 		this.mApiKey = apiKey;
 	}
 
+	/**
+	 * Starts a GET request to the demographics api and returns the results as a list of metrics.
+	 * This is a synchronous method.
+	 * @param state
+	 * @param cityName
+	 * @return
+	 */
 	public List<Metric> getDemographicInformation(String state, String cityName) {
 		String uri = null;
 		try {
@@ -55,7 +65,7 @@ public class ZillowApi {
 		try {
 			request.setURI(new URI(uri));
 			response = client.execute(request);
-			List<Metric> metrics = parse(response.getEntity().getContent());
+			List<Metric> metrics = parseDemographics(response.getEntity().getContent());
 			Log.d(getClass().getName(), "Metric List size is " + metrics.size());
 		} catch (URISyntaxException e1) {
 			e1.printStackTrace();
@@ -67,13 +77,28 @@ public class ZillowApi {
 		return null;
 	}
 
-	private List<Metric> parse(InputStream in) throws IOException {
+	/**
+	 * Parse the results from getDemographicInformation
+	 * @param in
+	 * @return
+	 * @throws IOException
+	 */
+	private List<Metric> parseDemographics(InputStream in) throws IOException {
 		XmlPullParser parser = Xml.newPullParser();
+		List<Metric> entries = new ArrayList<Metric>();
 		try {
 			parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
 			parser.setInput(in, null);
 			parser.nextTag();
-			return readResults(parser);
+			parser.require(XmlPullParser.START_TAG, null, "Demographics:demographics");
+			while (parser.next() != XmlPullParser.END_DOCUMENT) {
+				String name = parser.getName();
+				if (name != null && name.compareTo("attribute") == 0) {
+					parser.next();
+					entries.add(parseAttribute(parser));
+				}
+			}
+			return entries;
 		} catch (XmlPullParserException e) {
 			if (parser.getName() != null) {
 				Log.d(getClass().getName(), "Current tag is " + parser.getName());
@@ -87,20 +112,14 @@ public class ZillowApi {
 		return null;
 	}
 
-	private List<Metric> readResults(XmlPullParser parser) throws XmlPullParserException, IOException {
-		List<Metric> entries = new ArrayList<Metric>();
 
-		parser.require(XmlPullParser.START_TAG, null, "Demographics:demographics");
-		while (parser.next() != XmlPullParser.END_DOCUMENT) {
-			String name = parser.getName();
-			if (name != null && name.compareTo("attribute") == 0) {
-				parser.next();
-				entries.add(parseAttribute(parser));
-			}
-		}
-		return entries;
-	}
-
+	/**
+	 * Parse {@code attribute} tags. Since each attribute is modeled as a {@link Metric} , this method returns a Metric object.
+	 * @param parser
+	 * @return
+	 * @throws XmlPullParserException
+	 * @throws IOException
+	 */
 	private Metric parseAttribute(XmlPullParser parser) throws XmlPullParserException, IOException {
 		Metric metric = new Metric();
 		metric.setName(readText(parser, "name"));
@@ -133,6 +152,19 @@ public class ZillowApi {
 		return metric;
 	}
 
+	/**
+	 * Reads text correspoding to {@code tag} and moves the parser to the next tag. <br/>
+	 * For Example <br/>
+	 * <br/>
+	 * The following xml will be successfully parsed <br>
+	 * {@code <name>Zillow Home Value Index</name>}.
+	 * <br>The string "Zillow Home Value Index" will be returned.
+	 * @param parser
+	 * @param tag
+	 * @return
+	 * @throws IOException
+	 * @throws XmlPullParserException
+	 */
 	private String readText(XmlPullParser parser, String tag) throws IOException, XmlPullParserException {
 		String result = "";
 		parser.require(XmlPullParser.START_TAG, null, tag);
