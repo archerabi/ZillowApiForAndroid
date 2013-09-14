@@ -133,7 +133,7 @@ public class ZillowApi {
 		if (parser.getName().compareTo("values") == 0) {
 			parser.require(XmlPullParser.START_TAG, null, "values");
 			parser.next();
-			if (parser.getName().compareTo("city") == 0) {
+			if (parser.getName().compareTo("city") == 0 || parser.getName().compareTo("zip") == 0) {
 				parser.next();
 				try {
 					float value = Float.parseFloat(readText(parser, "value"));
