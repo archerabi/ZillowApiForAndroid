@@ -66,4 +66,8 @@ public class Neighborhood {
 	public void setNeighborhoodName(String neighborhoodName) {
 		this.name = neighborhoodName;
 	}
+	
+	public String toString(){
+		return name;
+	}
 }

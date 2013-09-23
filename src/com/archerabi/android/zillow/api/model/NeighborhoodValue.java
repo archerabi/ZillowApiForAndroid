@@ -7,12 +7,12 @@ import org.simpleframework.xml.Root;
 public class NeighborhoodValue {
 	
 	@Element(required=false)
-	private Float value;
+	private Float value = 0F;
 
 	/**
 	 * @return the value
 	 */
-	public float getValue() {
+	public Float getValue() {
 		return value;
 	}
 

@@ -1,5 +1,6 @@
 package com.archerabi.android.zillow.api.model;
 
+
 /**
  * 
  */
@@ -28,6 +29,9 @@ public class Metric {
 	@Path("values")
 	private CityValue city;
 
+	@Element(required=false)
+	private Float value;
+	
 	/**
 	 * @return the city
 	 */
@@ -71,6 +75,21 @@ public class Metric {
 	 */
 	public void setName(String mName) {
 		this.mName = mName;
+	}
+
+	
+	/**
+	 * @return the value
+	 */
+	public Float getValue() {
+		return value;
+	}
+
+	/**
+	 * @param value the value to set
+	 */
+	public void setValue(Float value) {
+		this.value = value;
 	}
 
 	/**
