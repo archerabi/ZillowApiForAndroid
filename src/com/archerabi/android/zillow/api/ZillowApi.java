@@ -4,12 +4,13 @@
 package com.archerabi.android.zillow.api;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -20,10 +21,10 @@ import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 
 import com.archerabi.android.zillow.api.model.Demographics;
-import com.archerabi.android.zillow.api.model.Metric;
 import com.archerabi.android.zillow.api.model.Neighborhood;
 import com.archerabi.android.zillow.api.model.RegionChart;
 import com.archerabi.android.zillow.api.model.RegionChildren;
@@ -44,7 +45,7 @@ public class ZillowApi {
 
 	private static String GET_REGION_CHART__CITY_URI = "GetRegionChart.htm?zws-id=%s&state=%s&city=%s&unit-type=dollar&width=%d&height=%d&chartDuration=%s";
 
-	private static String GET_REGION_CHART__NEIGHBORHOOD_URI = "GetRegionChart.htm?zws-id=%s&neighborhood=%s&unit-type=dollar&width=%d&height=%d&chartDuration=%s";
+	private static String GET_REGION_CHART__NEIGHBORHOOD_URI = "GetRegionChart.htm?zws-id=%s&neighborhood=%s&state=%s&city=%s&unit-type=dollar&width=%d&height=%d&chartDuration=%s";
 
 	private String mApiKey;
 
@@ -70,7 +71,7 @@ public class ZillowApi {
 	 * @param cityName
 	 * @return
 	 */
-	public Map<String, Metric> getDemographicInformation(String state, String cityName) {
+	public Demographics getDemographicInformation(String state, String cityName) {
 		String uri = null;
 		try {
 			uri = ZILLOW_API_HOST + String.format(GET_DEMOGRAPHICS_URI_STATE_CITY, mApiKey, URLEncoder.encode(state, "UTF-8"))
@@ -86,7 +87,7 @@ public class ZillowApi {
 			HttpResponse response = makeHttpRequest(uri);
 			Serializer parser = new Persister();
 			Demographics dem = parser.read(Demographics.class, response.getEntity().getContent());
-			return dem.getMetricMap();
+			return dem;
 		} catch (URISyntaxException e1) {
 			e1.printStackTrace();
 		} catch (ClientProtocolException e) {
@@ -101,7 +102,7 @@ public class ZillowApi {
 		return null;
 	}
 
-	public Map<String, Metric> getDemographicInformation(String regionId) {
+	public Demographics getDemographicInformation(String regionId) {
 		String uri = null;
 		try {
 			uri = ZILLOW_API_HOST + String.format(GET_DEMOGRAPHICS_URI_REGION, mApiKey, URLEncoder.encode(regionId, "UTF-8"));
@@ -116,7 +117,7 @@ public class ZillowApi {
 			HttpResponse response = makeHttpRequest(uri);
 			Serializer parser = new Persister();
 			Demographics dem = parser.read(Demographics.class, response.getEntity().getContent());
-			return dem.getMetricMap();
+			return dem;
 		} catch (URISyntaxException e) {
 			Log.w(context.getResources().getString(R.string.app_name), e.getMessage());
 			e.printStackTrace();
@@ -173,10 +174,49 @@ public class ZillowApi {
 		return null;
 	}
 
-	public URI getRegionChart(String regionId, int width, int height, CHART_DURATION duration) {
+	/**
+	 * @param duration
+	 * @param dur
+	 * @return
+	 */
+	private String getDuration(CHART_DURATION duration) {
+		String dur = "";
+		switch (duration) {
+		case FIVE_YEARS:
+			dur = "5years";
+			break;
+		case ONE_YEAR:
+			dur = "1year";
+			break;
+		case TEN_YEARS:
+			dur = "10years";
+			break;
+		}
+		return dur;
+	}
+
+	/**
+	 * @param state
+	 * @param city
+	 * @param width
+	 * @param height
+	 * @param duration
+	 * @return
+	 */
+	public URI getRegionChartUri(String regionId, String state, String city, int width, int height, CHART_DURATION duration) {
 		String uri = null;
 		try {
-			uri = ZILLOW_API_HOST + String.format(GET_REGION_CHART__NEIGHBORHOOD_URI, mApiKey, URLEncoder.encode(regionId, "UTF-8"), width, height, duration);
+			String dur = "";
+			dur = getDuration(duration);
+			if (regionId != null) {
+				uri = ZILLOW_API_HOST
+						+ String.format(GET_REGION_CHART__NEIGHBORHOOD_URI, mApiKey, URLEncoder.encode(regionId, "UTF-8"), URLEncoder.encode(state, "UTF-8"),
+								URLEncoder.encode(city, "UTF-8"), width, height, dur);
+			} else {
+				uri = ZILLOW_API_HOST
+						+ String.format(GET_REGION_CHART__CITY_URI, mApiKey, URLEncoder.encode(state, "UTF-8"), URLEncoder.encode(city, "UTF-8"), width,
+								height, dur);
+			}
 			Log.d(getClass().getName(), "URI = " + uri);
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
@@ -206,51 +246,28 @@ public class ZillowApi {
 		}
 		return null;
 	}
-
-	public URI getRegionChart(String state, String city, int width, int height, CHART_DURATION duration) {
-		String uri = null;
+	
+	/**
+	 * Downloads the region chart for the specified parameters and returns in the form of a Drawable
+	 * @param regionId
+	 * @param state
+	 * @param city
+	 * @param width
+	 * @param height
+	 * @param duration
+	 * @return
+	 */
+	public Drawable getRegionChart(String regionId, String state, String city, int width, int height, CHART_DURATION duration) {
+		URI uri = getRegionChartUri(regionId, state, city, width, height, duration);
+		InputStream is;
 		try {
-			String dur = "";
-			switch (duration) {
-			case FIVE_YEARS:
-				dur = "5years";
-				break;
-			case ONE_YEAR:
-				dur = "1year";
-				break;
-			case TEN_YEARS:
-				dur = "10year";
-				break;
-			}
-			uri = ZILLOW_API_HOST
-					+ String.format(GET_REGION_CHART__CITY_URI, mApiKey, URLEncoder.encode(state, "UTF-8"), URLEncoder.encode(city, "UTF-8"), width, height,
-							dur);
-			Log.d(getClass().getName(), "URI = " + uri);
-		} catch (UnsupportedEncodingException e) {
+			is = (InputStream) uri.toURL().getContent();
+			Drawable d = Drawable.createFromStream(is, "src");
+			return d;
+		} catch (MalformedURLException e) {
 			e.printStackTrace();
-		}
-		if (uri == null) {
-			return null;
-		}
-		try {
-			HttpResponse response = makeHttpRequest(uri);
-			Serializer serializer = new Persister();
-			RegionChart child = serializer.read(RegionChart.class, response.getEntity().getContent());
-			return new URI(child.getUrl());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-			Log.e(context.getResources().getString(R.string.app_name), e.getMessage());
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-			Log.e(context.getResources().getString(R.string.app_name), e.getMessage());
 		} catch (IOException e) {
 			e.printStackTrace();
-			Log.e(context.getResources().getString(R.string.app_name), e.getMessage());
-		} catch (IllegalStateException e) {
-			e.printStackTrace();
-			Log.e(context.getResources().getString(R.string.app_name), e.getMessage());
-		} catch (Exception e) {
-			Log.w(context.getResources().getString(R.string.app_name), e.getMessage());
 		}
 		return null;
 	}

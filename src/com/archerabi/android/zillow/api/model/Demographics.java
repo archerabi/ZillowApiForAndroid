@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementList;
 import org.simpleframework.xml.Path;
 import org.simpleframework.xml.Root;
@@ -23,6 +24,10 @@ public class Demographics {
 	@Path("response")
 	List<DemographicPage> pages;
 
+	@Element
+	@Path("response/links")
+	private String forSale;
+	
 	private Map<String, Metric> metricMap;
 
 	public Demographics() {
@@ -57,5 +62,19 @@ public class Demographics {
 			}
 		}
 		return metricMap;
+	}
+
+	/**
+	 * @return the forSale
+	 */
+	public String getForSale() {
+		return forSale;
+	}
+
+	/**
+	 * @param forSale the forSale to set
+	 */
+	public void setForSale(String forSale) {
+		this.forSale = forSale;
 	}
 }
